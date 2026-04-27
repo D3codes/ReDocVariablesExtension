@@ -1,0 +1,287 @@
+#redoc-autofill-helper,
+#redoc-autofill-helper * {
+  box-sizing: border-box;
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+#redoc-autofill-helper {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+}
+
+#redoc-autofill-helper .rah-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 24, 38, 0.42);
+}
+
+#redoc-autofill-helper .rah-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid #d6d9e0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 72px rgba(16, 24, 40, 0.24);
+}
+
+#redoc-autofill-helper .rah-header,
+#redoc-autofill-helper .rah-entry-top,
+#redoc-autofill-helper .rah-toolbar,
+#redoc-autofill-helper .rah-actions {
+  display: flex;
+  align-items: center;
+}
+
+#redoc-autofill-helper .rah-header,
+#redoc-autofill-helper .rah-entry-top,
+#redoc-autofill-helper .rah-actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#redoc-autofill-helper h1 {
+  margin: 0;
+  color: #141820;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+#redoc-autofill-helper p {
+  margin: 4px 0 0;
+  color: #5a6372;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#redoc-autofill-helper .rah-toolbar {
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+#redoc-autofill-helper .rah-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #2b3442;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+#redoc-autofill-helper .rah-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+
+#redoc-autofill-helper .rah-list {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+#redoc-autofill-helper .rah-entry {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+#redoc-autofill-helper label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+#redoc-autofill-helper input[type="text"],
+#redoc-autofill-helper select,
+#redoc-autofill-helper textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  background: #ffffff;
+  color: #101828;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+#redoc-autofill-helper input[type="text"],
+#redoc-autofill-helper select {
+  height: 38px;
+}
+
+#redoc-autofill-helper textarea {
+  min-height: 96px;
+  max-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  line-height: 1.45;
+}
+
+#redoc-autofill-helper textarea[readonly] {
+  background: #f8fafc;
+  color: #344054;
+}
+
+#redoc-autofill-helper input[type="text"]:focus,
+#redoc-autofill-helper select:focus,
+#redoc-autofill-helper textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+#redoc-autofill-helper button {
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#redoc-autofill-helper .rah-primary,
+#redoc-autofill-helper .rah-secondary {
+  padding: 0 14px;
+}
+
+#redoc-autofill-helper .rah-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+#redoc-autofill-helper .rah-primary:hover {
+  background: #1d4ed8;
+}
+
+#redoc-autofill-helper .rah-secondary {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+#redoc-autofill-helper .rah-secondary:hover {
+  background: #f8fafc;
+}
+
+#redoc-autofill-helper .rah-icon-button {
+  flex: 0 0 auto;
+  width: 36px;
+  padding: 0;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #475467;
+  font-size: 18px;
+}
+
+#redoc-autofill-helper .rah-icon-button:hover {
+  background: #f1f5f9;
+}
+
+#redoc-autofill-helper .rah-status {
+  min-height: 18px;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rah-filled-highlight {
+  outline: 3px solid rgba(37, 99, 235, 0.35) !important;
+  outline-offset: 2px !important;
+  transition: outline-color 200ms ease;
+}
+
+.rah-response-block {
+  position: relative !important;
+  padding-left: max(34px, 1.75rem) !important;
+}
+
+.rah-response-annotations {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  width: 24px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rah-response-save {
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(37, 99, 235, 0.45);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+  cursor: pointer;
+  font: 700 14px/18px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: auto;
+}
+
+.rah-response-save:hover {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.rah-response-save-saved,
+.rah-response-save-saved:hover {
+  width: 28px;
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  #redoc-autofill-helper .rah-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+  }
+
+  #redoc-autofill-helper .rah-header,
+  #redoc-autofill-helper .rah-actions {
+    align-items: stretch;
+  }
+
+  #redoc-autofill-helper .rah-actions {
+    flex-direction: column;
+  }
+
+  #redoc-autofill-helper .rah-primary,
+  #redoc-autofill-helper .rah-secondary {
+    width: 100%;
+  }
+}
