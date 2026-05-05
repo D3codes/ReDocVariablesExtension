@@ -889,12 +889,15 @@
 
     let filled = 0;
     let unchanged = 0;
-    const skipped = [];
+    let skipped = 0;
     const matched = [];
 
     candidates.forEach((candidate) => {
       const bodyFillOutcome = fillJsonBodyCandidate(candidate, usableEntries, activeSettings);
       if (bodyFillOutcome.status !== "not-json") {
+        skipped += bodyFillOutcome.skipped || 0;
+        unchanged += bodyFillOutcome.unchanged || 0;
+
         if (bodyFillOutcome.status === "changed") {
           candidate.element.dispatchEvent(new Event("input", { bubbles: true }));
           candidate.element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -908,7 +911,7 @@
       }
 
       if (!activeSettings.overwriteExisting && candidate.element.value) {
-        skipped.push(candidate);
+        skipped += 1;
         return;
       }
 
@@ -940,7 +943,7 @@
     return {
       filled,
       unchanged,
-      skipped: skipped.length,
+      skipped,
       scanned: candidates.length,
       configured: usableEntries.length
     };
@@ -967,23 +970,38 @@
     }
 
     if (!result.changed) {
-      return { status: "unchanged", count: result.matched };
+      return {
+        status: "unchanged",
+        count: result.unchanged,
+        skipped: result.skipped
+      };
     }
 
     const nextValue = stringifyJsonLikeOriginal(parsedValue, originalValue);
     const fillOutcome = setNativeValue(element, nextValue);
 
     if (fillOutcome === "changed") {
-      return { status: "changed", count: result.changed };
+      return {
+        status: "changed",
+        count: result.changed,
+        unchanged: result.unchanged,
+        skipped: result.skipped
+      };
     }
 
-    return { status: "unchanged", count: result.matched };
+    return {
+      status: "unchanged",
+      count: result.changed + result.unchanged,
+      skipped: result.skipped
+    };
   }
 
   function updateJsonBodyProperties(value, usableEntries, activeSettings) {
     const result = {
       matched: 0,
-      changed: 0
+      changed: 0,
+      unchanged: 0,
+      skipped: 0
     };
 
     visitJsonBodyValue(value, (container, key) => {
@@ -993,8 +1011,15 @@
       }
 
       result.matched += 1;
+
+      if (!activeSettings.overwriteExisting && !isEmptyJsonBodyPropertyValue(container[key])) {
+        result.skipped += 1;
+        return;
+      }
+
       const nextValue = coerceSavedValueForJson(container[key], match.entry.value);
       if (jsonValuesEqual(container[key], nextValue)) {
+        result.unchanged += 1;
         return;
       }
 
@@ -1003,6 +1028,26 @@
     });
 
     return result;
+  }
+
+  function isEmptyJsonBodyPropertyValue(value) {
+    if (value === null) {
+      return true;
+    }
+
+    if (typeof value === "string") {
+      return value.trim().length === 0;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    }
+
+    if (value && typeof value === "object") {
+      return Object.keys(value).length === 0;
+    }
+
+    return false;
   }
 
   function visitJsonBodyValue(value, callback) {
