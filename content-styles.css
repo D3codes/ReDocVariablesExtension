@@ -39,7 +39,9 @@
 #redoc-autofill-helper .rah-header,
 #redoc-autofill-helper .rah-entry-top,
 #redoc-autofill-helper .rah-toolbar,
-#redoc-autofill-helper .rah-actions {
+#redoc-autofill-helper .rah-actions,
+#redoc-autofill-helper .rah-action-group,
+#redoc-autofill-helper .rah-reuse-actions {
   display: flex;
   align-items: center;
 }
@@ -75,6 +77,11 @@
   background: #f8fafc;
 }
 
+#redoc-autofill-helper .rah-action-group,
+#redoc-autofill-helper .rah-reuse-actions {
+  gap: 8px;
+}
+
 #redoc-autofill-helper .rah-check {
   display: inline-flex;
   align-items: center;
@@ -106,6 +113,21 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
+}
+
+#redoc-autofill-helper .rah-reuse-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+#redoc-autofill-helper .rah-reuse-panel[hidden] {
+  display: none;
 }
 
 #redoc-autofill-helper label {
@@ -167,6 +189,11 @@
   font-weight: 650;
   line-height: 1;
   cursor: pointer;
+}
+
+#redoc-autofill-helper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 #redoc-autofill-helper .rah-primary,
@@ -278,6 +305,21 @@
 
   #redoc-autofill-helper .rah-actions {
     flex-direction: column;
+  }
+
+  #redoc-autofill-helper .rah-action-group,
+  #redoc-autofill-helper .rah-reuse-actions,
+  #redoc-autofill-helper .rah-reuse-panel {
+    width: 100%;
+  }
+
+  #redoc-autofill-helper .rah-action-group,
+  #redoc-autofill-helper .rah-reuse-actions {
+    flex-direction: column;
+  }
+
+  #redoc-autofill-helper .rah-reuse-panel {
+    grid-template-columns: 1fr;
   }
 
   #redoc-autofill-helper .rah-primary,
