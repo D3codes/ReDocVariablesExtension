@@ -175,31 +175,33 @@ vm.runInContext(script, context);
 const unchangedBodyWithoutMatchingProperty = bodyWithoutMatchingProperty.value;
 const unchangedInvalidJsonBody = invalidJsonBody.value;
 
-const result = context.window.__REDOC_AUTOFILL_TEST_API__.fillPage(
-  [
-    {
-      label: "Customer ID",
-      aliases: "customer_id, customer id",
-      value: "customer-123"
-    },
-    {
-      label: "Amount",
-      aliases: "amount",
-      value: "42"
-    },
-    {
-      label: "Active",
-      aliases: "active",
-      value: "true"
-    },
-    {
-      label: "API Key",
-      aliases: "api_key, x-api-key",
-      value: "secret-token"
-    }
-  ],
+const savedEntries = [
   {
-    overwriteExisting: false,
+    label: "Customer ID",
+    aliases: "customer_id, customer id",
+    value: "customer-123"
+  },
+  {
+    label: "Amount",
+    aliases: "amount",
+    value: "42"
+  },
+  {
+    label: "Active",
+    aliases: "active",
+    value: "true"
+  },
+  {
+    label: "API Key",
+    aliases: "api_key, x-api-key",
+    value: "secret-token"
+  }
+];
+
+const overwriteEnabledResult = context.window.__REDOC_AUTOFILL_TEST_API__.fillPage(
+  savedEntries,
+  {
+    overwriteExisting: true,
     caseSensitive: false
   }
 );
@@ -216,7 +218,47 @@ assert.strictEqual(parsedArrayBody[0].customer_id, "customer-123");
 assert.strictEqual(parsedArrayBody[0].amount, 42);
 assert.strictEqual(bodyWithoutMatchingProperty.value, unchangedBodyWithoutMatchingProperty);
 assert.strictEqual(invalidJsonBody.value, unchangedInvalidJsonBody);
-assert.strictEqual(result.filled, 6);
+assert.strictEqual(overwriteEnabledResult.filled, 6);
 assert.notStrictEqual(requestBody.value, "customer-123");
+
+requestBody.value = `{
+  "customer_id": "",
+  "amount": 0,
+  "active": false,
+  "note": "keep me",
+  "nested": {
+    "api_key": "old"
+  }
+}`;
+
+arrayRequestBody.value = `[
+  {
+    "customer_id": "",
+    "amount": 0
+  }
+]`;
+
+const overwriteDisabledResult = context.window.__REDOC_AUTOFILL_TEST_API__.fillPage(
+  savedEntries,
+  {
+    overwriteExisting: false,
+    caseSensitive: false
+  }
+);
+
+const protectedBody = JSON.parse(requestBody.value);
+const protectedArrayBody = JSON.parse(arrayRequestBody.value);
+
+assert.strictEqual(protectedBody.customer_id, "customer-123");
+assert.strictEqual(protectedBody.amount, 0);
+assert.strictEqual(protectedBody.active, false);
+assert.strictEqual(protectedBody.note, "keep me");
+assert.strictEqual(protectedBody.nested.api_key, "old");
+assert.strictEqual(protectedArrayBody[0].customer_id, "customer-123");
+assert.strictEqual(protectedArrayBody[0].amount, 0);
+assert.strictEqual(bodyWithoutMatchingProperty.value, unchangedBodyWithoutMatchingProperty);
+assert.strictEqual(invalidJsonBody.value, unchangedInvalidJsonBody);
+assert.strictEqual(overwriteDisabledResult.filled, 2);
+assert.strictEqual(overwriteDisabledResult.skipped, 4);
 
 console.log("request body json regression test passed");
