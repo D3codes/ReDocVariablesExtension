@@ -19,9 +19,11 @@ A small Chrome/Edge extension for saving reusable API documentation values, then
    - **Value**: the value to write into matching fields.
 4. Click **Save**.
 
-After values are saved, matching fields populate automatically whenever a ReDoc-style page loads, becomes visible again, or renders new editable fields. The toolbar button is only needed when you want to add or edit saved values.
+After values are saved, matching fields populate automatically whenever a ReDoc-style page loads, becomes visible again, or renders new editable fields. Values are stored per domain, so each API documentation site keeps its own set. The toolbar button is only needed when you want to add, edit, or reuse saved values.
 
 The extension stores values with `chrome.storage.sync`, so they can sync with the browser profile when sync is enabled.
+
+Click **Reuse site values** to copy all saved values from another domain into the current domain.
 
 ## Matching Behavior
 
@@ -56,9 +58,11 @@ Run the lightweight validation suite with:
 ```powershell
 node --check content-script.js
 node --check background.js
+node tests\modal-entry-form-regression.test.js
 node tests\matching-regression.test.js
 node tests\request-body-json-regression.test.js
 node tests\response-property-save.test.js
+node tests\site-storage-regression.test.js
 ```
 
 ## Notes

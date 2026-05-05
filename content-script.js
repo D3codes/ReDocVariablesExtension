@@ -2,6 +2,7 @@
   const APP_ID = "redoc-autofill-helper";
   const STORAGE_KEY = "redocAutofillEntries";
   const SETTINGS_KEY = "redocAutofillSettings";
+  const STORAGE_VERSION = 2;
   const AUTOFILL_DEBOUNCE_MS = 350;
   const RESPONSE_ANNOTATION_DEBOUNCE_MS = 450;
   const RESPONSE_ANNOTATION_CLASS = "rah-response-annotations";
@@ -32,7 +33,9 @@
   window.__redocAutofillLoaded = true;
 
   let entries = [];
+  let entriesBySite = {};
   let settings = { ...DEFAULT_SETTINGS };
+  let currentSiteKey = "";
   let modalRoot = null;
   let statusNode = null;
   let focusedBeforeOpen = null;
@@ -86,9 +89,11 @@
 
   async function loadState() {
     const stored = await chrome.storage.sync.get([STORAGE_KEY, SETTINGS_KEY]);
-    entries = Array.isArray(stored[STORAGE_KEY]) && stored[STORAGE_KEY].length
-      ? stored[STORAGE_KEY].map((entry) => ({ ...entry, id: entry.id || createId() }))
-      : DEFAULT_ENTRIES.map((entry) => ({ ...entry, id: createId() }));
+    currentSiteKey = getCurrentSiteKey();
+    entriesBySite = normalizeStoredSiteEntries(stored[STORAGE_KEY]);
+    entries = entriesBySite[currentSiteKey]?.length
+      ? cloneEntries(entriesBySite[currentSiteKey])
+      : createDefaultEntries();
     settings = {
       ...DEFAULT_SETTINGS,
       ...(stored[SETTINGS_KEY] || {})
@@ -96,10 +101,145 @@
   }
 
   async function saveState() {
+    currentSiteKey = currentSiteKey || getCurrentSiteKey();
+    const nextEntriesBySite = cloneEntriesBySite(entriesBySite);
+    const nextEntries = normalizeEntries(entries);
+
+    if (nextEntries.length) {
+      nextEntriesBySite[currentSiteKey] = nextEntries;
+    } else {
+      delete nextEntriesBySite[currentSiteKey];
+    }
+
+    entriesBySite = nextEntriesBySite;
+
     await chrome.storage.sync.set({
-      [STORAGE_KEY]: entries,
+      [STORAGE_KEY]: createStoredEntriesBySite(entriesBySite),
       [SETTINGS_KEY]: settings
     });
+  }
+
+  function normalizeStoredSiteEntries(storedEntries) {
+    if (!storedEntries || typeof storedEntries !== "object" || Array.isArray(storedEntries)) {
+      return {};
+    }
+
+    const rawSites = storedEntries.sites && typeof storedEntries.sites === "object"
+      ? storedEntries.sites
+      : {};
+    const nextEntriesBySite = {};
+
+    Object.entries(rawSites).forEach(([siteKey, siteEntries]) => {
+      const normalizedSiteKey = normalizeSiteKey(siteKey);
+      const normalizedEntries = normalizeEntries(siteEntries);
+
+      if (normalizedSiteKey && normalizedEntries.length) {
+        nextEntriesBySite[normalizedSiteKey] = normalizedEntries;
+      }
+    });
+
+    return nextEntriesBySite;
+  }
+
+  function createStoredEntriesBySite(siteEntries) {
+    return {
+      version: STORAGE_VERSION,
+      sites: cloneEntriesBySite(siteEntries)
+    };
+  }
+
+  function cloneEntriesBySite(siteEntries) {
+    const nextEntriesBySite = {};
+
+    Object.entries(siteEntries || {}).forEach(([siteKey, siteEntriesList]) => {
+      const normalizedSiteKey = normalizeSiteKey(siteKey);
+      const normalizedEntries = normalizeEntries(siteEntriesList);
+
+      if (normalizedSiteKey && normalizedEntries.length) {
+        nextEntriesBySite[normalizedSiteKey] = normalizedEntries;
+      }
+    });
+
+    return nextEntriesBySite;
+  }
+
+  function cloneEntries(entryList) {
+    return normalizeEntries(entryList);
+  }
+
+  function normalizeEntries(entryList) {
+    if (!Array.isArray(entryList)) {
+      return [];
+    }
+
+    return entryList
+      .map((entry) => normalizeEntry(entry))
+      .filter((entry) => entry.label || entry.aliases || entry.value);
+  }
+
+  function normalizeEntry(entry) {
+    const source = entry && typeof entry === "object" ? entry : {};
+
+    return {
+      id: source.id || createId(),
+      label: String(source.label || ""),
+      aliases: String(source.aliases || ""),
+      value: source.value == null ? "" : String(source.value)
+    };
+  }
+
+  function createDefaultEntries() {
+    return DEFAULT_ENTRIES.map((entry) => ({
+      id: createId(),
+      label: entry.label,
+      aliases: entry.aliases,
+      value: entry.value
+    }));
+  }
+
+  function createBlankEntry() {
+    return {
+      id: createId(),
+      label: "",
+      aliases: "",
+      value: ""
+    };
+  }
+
+  function getCurrentSiteKey() {
+    const locationValue = window.location || {};
+    const host = locationValue.host || locationValue.hostname;
+
+    if (host) {
+      return normalizeSiteKey(host);
+    }
+
+    if (locationValue.protocol === "file:") {
+      return "local-file";
+    }
+
+    try {
+      const parsedUrl = new URL(locationValue.href);
+      return normalizeSiteKey(parsedUrl.host || parsedUrl.hostname || "unknown-site");
+    } catch (error) {
+      return "unknown-site";
+    }
+  }
+
+  function normalizeSiteKey(siteKey) {
+    return compactWhitespace(siteKey).toLowerCase();
+  }
+
+  function formatSiteLabel(siteKey) {
+    if (siteKey === "local-file") {
+      return "Local file";
+    }
+
+    if (siteKey === "unknown-site") {
+      return "Current site";
+    }
+
+    return siteKey;
   }
 
   function openModal() {
@@ -155,8 +295,13 @@
 
         <div class="rah-list" data-entry-list aria-label="Saved autofill values"></div>
 
+        <div class="rah-reuse-panel" data-reuse-panel hidden></div>
+
         <div class="rah-actions">
-          <button type="button" class="rah-secondary" data-action="add">Add value</button>
+          <div class="rah-action-group">
+            <button type="button" class="rah-secondary" data-action="add">Add value</button>
+            <button type="button" class="rah-secondary" data-action="show-reuse-sites">Reuse site values</button>
+          </div>
           <button type="button" class="rah-primary" data-action="save-fill">Save</button>
         </div>
 
@@ -166,11 +311,13 @@
   }
 
   function getPageHint() {
+    const siteLabel = escapeHtml(formatSiteLabel(currentSiteKey || getCurrentSiteKey()));
+
     if (isLikelyRedocPage()) {
-      return "Detected a ReDoc-style API document. Matching fields fill automatically.";
+      return `Values for ${siteLabel}. Matching fields fill automatically.`;
     }
 
-    return "Automatic filling runs when a ReDoc-style API document is detected.";
+    return `Values for ${siteLabel}. Automatic filling runs when a ReDoc-style API document is detected.`;
   }
 
   function renderEntryRows() {
@@ -202,6 +349,90 @@
     });
   }
 
+  function showReuseSitePanel() {
+    const panel = modalRoot.querySelector("[data-reuse-panel]");
+    const sites = getStoredSiteSummaries({ excludeCurrent: true });
+
+    if (!panel) {
+      return;
+    }
+
+    if (!sites.length) {
+      setStatus("No other domains have saved values yet.");
+      return;
+    }
+
+    panel.innerHTML = `
+      <label>
+        <span>Copy values from</span>
+        <select data-field="reuseSiteKey">
+          ${sites.map((site) => `
+            <option value="${escapeAttribute(site.key)}">${escapeHtml(site.label)} (${site.count})</option>
+          `).join("")}
+        </select>
+      </label>
+      <div class="rah-reuse-actions">
+        <button type="button" class="rah-secondary" data-action="cancel-reuse">Cancel</button>
+        <button type="button" class="rah-primary" data-action="apply-reuse-site">Use values</button>
+      </div>
+    `;
+    panel.hidden = false;
+    panel.querySelector("select")?.focus();
+  }
+
+  function hideReuseSitePanel() {
+    const panel = modalRoot?.querySelector("[data-reuse-panel]");
+
+    if (!panel) {
+      return;
+    }
+
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+
+  function getStoredSiteSummaries(options = {}) {
+    return Object.entries(entriesBySite || {})
+      .map(([siteKey, siteEntries]) => ({
+        key: normalizeSiteKey(siteKey),
+        label: formatSiteLabel(siteKey),
+        count: Array.isArray(siteEntries) ? siteEntries.length : 0
+      }))
+      .filter((site) => site.key && site.count > 0)
+      .filter((site) => !options.excludeCurrent || site.key !== currentSiteKey)
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }
+
+  async function reuseEntriesFromSite(siteKey) {
+    const sourceSiteKey = normalizeSiteKey(siteKey);
+
+    if (!sourceSiteKey || sourceSiteKey === currentSiteKey) {
+      return 0;
+    }
+
+    const copiedEntries = createCopiedEntriesFromSite(sourceSiteKey);
+    if (!copiedEntries.length) {
+      return 0;
+    }
+
+    entries = copiedEntries;
+    await saveState();
+    return entries.length;
+  }
+
+  function createCopiedEntriesFromSite(siteKey) {
+    const sourceEntries = entriesBySite[normalizeSiteKey(siteKey)];
+
+    if (!Array.isArray(sourceEntries)) {
+      return [];
+    }
+
+    return sourceEntries.map((entry) => ({
+      ...normalizeEntry(entry),
+      id: createId()
+    }));
+  }
+
   function bindModalEvents() {
     modalRoot.addEventListener("click", async (event) => {
       const action = event.target.closest("[data-action]")?.dataset.action;
@@ -214,13 +445,37 @@
         return;
       }
 
+      if (action === "show-reuse-sites") {
+        showReuseSitePanel();
+        return;
+      }
+
+      if (action === "cancel-reuse") {
+        hideReuseSitePanel();
+        return;
+      }
+
+      if (action === "apply-reuse-site") {
+        const siteKey = modalRoot.querySelector("[data-field='reuseSiteKey']")?.value || "";
+        const copiedCount = await reuseEntriesFromSite(siteKey);
+
+        if (!copiedCount) {
+          setStatus("Choose a domain with saved values.");
+          return;
+        }
+
+        renderEntryRows();
+        hideReuseSitePanel();
+        fillPage(entries, settings, { force: true, highlight: true });
+        setStatus(`Copied ${copiedCount} values from ${formatSiteLabel(siteKey)}.`);
+        return;
+      }
+
       if (action === "add") {
-        entries.push({
-          id: createId(),
-          label: "",
-          aliases: "",
-          value: ""
-        });
+        entries = [
+          ...readEntriesFromModal({ includeEmpty: true }),
+          createBlankEntry()
+        ];
         renderEntryRows();
         modalRoot.querySelector(".rah-entry:last-child input")?.focus();
         return;
@@ -228,6 +483,7 @@
 
       if (action === "remove") {
         const id = event.target.closest(".rah-entry")?.dataset.entryId;
+        entries = readEntriesFromModal({ includeEmpty: true });
         entries = entries.filter((entry) => entry.id !== id);
         renderEntryRows();
         return;
@@ -276,21 +532,33 @@
   }
 
   async function persistFromModal() {
-    const nextEntries = [];
-
-    modalRoot.querySelectorAll(".rah-entry").forEach((row) => {
-      const id = row.dataset.entryId || createId();
-      const label = row.querySelector("[data-field='label']").value.trim();
-      const aliases = row.querySelector("[data-field='aliases']").value.trim();
-      const value = row.querySelector("[data-field='value']").value;
-
-      if (label || aliases || value) {
-        nextEntries.push({ id, label, aliases, value });
-      }
-    });
-
-    entries = nextEntries;
+    entries = readEntriesFromModal();
     await saveState();
+  }
+
+  function readEntriesFromModal(options = {}) {
+    if (!modalRoot) {
+      return [];
+    }
+
+    return readEntriesFromRows(modalRoot.querySelectorAll(".rah-entry"), options);
+  }
+
+  function readEntriesFromRows(rows, options = {}) {
+    return Array.from(rows || [])
+      .map((row) => {
+        const label = row.querySelector("[data-field='label']")?.value.trim() || "";
+        const aliases = row.querySelector("[data-field='aliases']")?.value.trim() || "";
+        const value = row.querySelector("[data-field='value']")?.value || "";
+
+        return {
+          id: row.dataset.entryId || createId(),
+          label,
+          aliases,
+          value
+        };
+      })
+      .filter((entry) => options.includeEmpty || entry.label || entry.aliases || entry.value);
   }
 
   function startAutofillObserver() {
@@ -1494,16 +1762,34 @@
     return `entry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
+  function getStateSnapshot() {
+    return {
+      currentSiteKey,
+      entries: cloneEntries(entries),
+      entriesBySite: cloneEntriesBySite(entriesBySite),
+      settings: { ...settings }
+    };
+  }
+
   if (window.__REDOC_AUTOFILL_ENABLE_TEST_HOOK__) {
     window.__REDOC_AUTOFILL_TEST_API__ = {
       fillPage,
       applyResponseCaptureEntry,
       collectFillCandidates,
       createEntryFromResponseProperty,
+      createBlankEntry,
+      createCopiedEntriesFromSite,
       extractResponseProperties,
       findBestMatch,
       fillJsonBodyCandidate,
       getCandidateFragments,
+      getCurrentSiteKey,
+      getStateSnapshot,
+      getStoredSiteSummaries,
+      loadState,
+      normalizeStoredSiteEntries,
+      readEntriesFromRows,
+      reuseEntriesFromSite,
       updateJsonBodyProperties,
       normalize
     };

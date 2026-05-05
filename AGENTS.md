@@ -9,10 +9,11 @@ The extension helps users work with ReDoc/ReDocly-powered API documentation page
 - Storing reusable values such as API keys, IDs, tokens, and other request inputs.
 - Automatically filling matching request fields in API documentation consoles.
 - Watching dynamically rendered ReDoc content so fields that appear later can still be filled.
+- Keeping saved values isolated per site/domain, with a reuse flow for copying values from another domain.
 - Adding a `+` control next to each property in response-looking JSON blocks.
 - Letting users capture a response property value into saved autofill values, either as a new value or by overwriting an existing saved value.
 
-Saved values are stored in `chrome.storage.sync` under `redocAutofillEntries`. Settings are stored under `redocAutofillSettings`.
+Saved values are stored in `chrome.storage.sync` under `redocAutofillEntries` as a versioned object: `{ version: 2, sites: { [siteKey]: entries } }`. Settings are stored under `redocAutofillSettings`.
 
 ## File Layout
 
@@ -48,12 +49,18 @@ Saved values are stored in `chrome.storage.sync` under `redocAutofillEntries`. S
   - VM/fake-DOM regression test for request field matching.
   - Protects against the bug where broad operation text caused all fields to receive the same value.
 
+- `tests/modal-entry-form-regression.test.js`
+  - VM/fake-DOM regression test for preserving unsaved modal row edits across add/remove re-renders.
+
 - `tests/request-body-json-regression.test.js`
   - VM/fake-DOM regression test for editable JSON request bodies.
   - Protects against replacing an entire request body with a saved scalar value when only one JSON property should change.
 
 - `tests/response-property-save.test.js`
   - VM/fake-DOM regression test for response property parsing and response capture entry creation/overwrite behavior.
+
+- `tests/site-storage-regression.test.js`
+  - VM/fake-DOM regression test for per-site storage and reuse-from-site behavior.
 
 ## Core Flows
 
@@ -72,6 +79,8 @@ The main modal lets users add/remove/edit entries and toggle:
 
 - `overwriteExisting`
 - `caseSensitive`
+
+The modal is scoped to the current site key from `window.location.host`. **Reuse site values** opens a domain picker, then copies all saved values from the selected source domain into the current domain.
 
 When the main modal's **Save** button is clicked:
 
@@ -192,9 +201,11 @@ Run these checks after changes:
 ```powershell
 node --check content-script.js
 node --check background.js
+node tests\modal-entry-form-regression.test.js
 node tests\matching-regression.test.js
 node tests\request-body-json-regression.test.js
 node tests\response-property-save.test.js
+node tests\site-storage-regression.test.js
 Get-Content -Raw manifest.json | ConvertFrom-Json | Out-Null
 ```
 
